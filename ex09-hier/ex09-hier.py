@@ -59,6 +59,7 @@ def plot_termination_maps(env, terminations):
             for j in range(13):
                 if termination_maps[option][i,j] == 0:
                     termination_maps[option][i,j] = terminations[option].pmf(state)
+                    print(terminations[option].pmf(state))
                     state += 1
 
     for o_n, t in enumerate(termination_maps):
@@ -79,6 +80,7 @@ def option_critic(env):
     lr_critic = 0.5  # learning rate for critic
 
     temperature = 1e-2  # softmax with temperature (Boltzmann distribution)
+    epsilon = 0.1
 
     nstates = env.observation_space.shape[0]
     nactions = env.action_space.shape[0]
@@ -95,25 +97,32 @@ def option_critic(env):
 
     for episode in range(nepisodes):
         state = env.reset()
-        option = policy_options(state, Q_omega)  # select option epsilon greedy
-
+        option = policy_options(state, Q_omega, epsilon)  # select option epsilon greedy
         for step in range(nsteps):
             action = option_policies[option].sample(state)  # select primitive action from option
             nextstate, reward, done, _ = env.step(action)  # perform action: observe nextstate, reward
 
-            # TODO: 1. Options evaluation
+            Q_omega[state, option] = np.dot(option_policies[option].pmf(state), Q_U[state, option, :])
 
+            # TODO: 1. Options evaluation
+            delta = reward - Q_U[state, option, action]
+            if not done:
+                delta += (gamma*(1-option_terminations[option].pmf(nextstate))*Q_omega[nextstate, option]) + \
+                         (gamma*option_terminations[option].pmf(nextstate)*np.max(Q_omega[nextstate, :]))
+            Q_U[state, option, action] += lr_term * delta
 
             # TODO: 2. Options improvement
             # policies:
             # you can access the weights using: option_policies[option].weights and the log gradient using option_policies[option].loggradient(state, action)
+            option_policies[option].weights += lr_intra * option_policies[option].loggradient(state, action) * Q_U[state, option, action]
             # terminations:
             # you can access the weights using: option_terminations[option].weights and the gradient using option_terminations[option].gradient(state)
-            
+            V = Q_omega[nextstate, option]*(1-epsilon) + epsilon * np.mean(Q_omega[nextstate, :])
+            option_terminations[option].weights -= lr_critic * option_terminations[option].gradient(nextstate) * (Q_omega[nextstate, option]-V)
             # when option terminates we select a new option
             if option_terminations[option].sample(nextstate):
                 option = policy_options(nextstate, Q_omega)
-
+            
             state = nextstate  # update state
 
             if done:

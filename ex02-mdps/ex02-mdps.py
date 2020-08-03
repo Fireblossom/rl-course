@@ -1,5 +1,7 @@
 import gym
+
 import numpy as np
+from itertools import product
 
 # Init environment
 # Lets use a smaller 3x3 custom map for faster computations
@@ -13,6 +15,7 @@ env = gym.make("FrozenLake-v0", desc=custom_map3x3)
 #env = gym.make("FrozenLake-v0")
 
 # Uncomment the following lines for even larger maps:
+#from gym.envs.toy_text.frozen_lake import generate_random_map
 #random_map = generate_random_map(size=5, p=0.8)
 #env = gym.make("FrozenLake-v0", desc=random_map)
 
@@ -50,7 +53,8 @@ def value_policy(policy):
     P = trans_matrix_for_policy(policy)
     # TODO: calculate and return v
     # (P, r and gamma already given)
-    return None
+    v_pi = np.dot(np.linalg.inv(np.identity(P.shape[0]) - gamma*P), r)
+    return v_pi
 
 
 def bruteforce_policies():
@@ -60,10 +64,21 @@ def bruteforce_policies():
     policy = np.zeros(n_states, dtype=np.int)  # in the discrete case a policy is just an array with action = policy[state]
     optimalvalue = np.zeros(n_states)
     
-    # TODO: implement code that tries all possible policies, calculate the values using def value_policy. Find the optimal values and the optimal policies to answer the exercise questions.
+    # TODO: implement code that tries all possible policies, 
+    # calculate the values using def value_policy. 
+    # Find the optimal values and the optimal policies to answer the exercise questions.
+    p_v = {}
+    for p in product([0, 1, 2, 3], repeat=n_states):
+        v = value_policy(list(p))
+        p_v[p] = v
+        optimalvalue = np.maximum(optimalvalue, v)
+
+    for p, v in p_v.items():
+        if (v == optimalvalue).all():
+            optimalpolicies.append(p)
 
     print ("Optimal value function:")
-    print(optimalvalue)
+    print (optimalvalue)
     print ("number optimal policies:")
     print (len(optimalpolicies))
     print ("optimal policies:")
@@ -81,14 +96,19 @@ def main():
     # Here a policy is just an array with the action for a state as element
     policy_left = np.zeros(n_states, dtype=np.int)  # 0 for all states
     policy_right = np.ones(n_states, dtype=np.int) * 2  # 2 for all states
-
+    policy_up = np.ones(n_states, dtype=np.int) * 3
+    policy_down = np.ones(n_states, dtype=np.int)
     # Value functions:
     print("Value function for policy_left (always going left):")
     print (value_policy(policy_left))
     print("Value function for policy_right (always going right):")
     print (value_policy(policy_right))
+    print("Value function for policy_up (always going up):")
+    print (value_policy(policy_up))
+    print("Value function for policy_down (always going down):")
+    print (value_policy(policy_down))
 
-    optimalpolicies = bruteforce_policies()
+    #optimalpolicies = bruteforce_policies()
 
 
     # This code can be used to "rollout" a policy in the environment:

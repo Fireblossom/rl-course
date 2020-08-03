@@ -22,7 +22,37 @@ def value_iteration():
     gamma = 0.8
     # TODO: implement the value iteration algorithm and return the policy
     # Hint: env.P[state][action] gives you tuples (p, n_state, r, is_terminal), which tell you the probability p that you end up in the next state n_state and receive reward r
+    delta = 1
+    count = 0
+    while delta > theta:
+        count += 1
+        delta = .0
+        for s in range(n_states):
+            v = tuple(V_states) # deep copy
+            sum_up = 0
+            for a in range(n_actions):
+                args = env.P[s][a]
+                sum_up = 0
+                for arg in args:
+                    p, n_state, r, is_terminal = arg
+                    sum_up += p * (r + gamma * V_states[n_state])
+                V_states[s] = max(sum_up, V_states[s])
+            delta = max(delta, np.linalg.norm(V_states - v))
 
+    policy = np.zeros(n_states)
+    for s in range(n_states):
+        sum_up_action = []
+        for a in range(n_actions):
+            args = env.P[s][a]
+            sum_up = 0
+            for arg in args:
+                p, n_state, r, is_terminal = arg
+                sum_up += p * (r + gamma * V_states[n_state])
+            sum_up_action.append(sum_up)
+        policy[s] = np.argmax(sum_up_action)
+
+    return policy, V_states, count
+    
 
 def main():
     # print the environment
@@ -31,9 +61,12 @@ def main():
     print("")
 
     # run the value iteration
-    policy = value_iteration()
+    policy, value_optimal, steps = value_iteration()
     print("Computed policy:")
     print(policy)
+    print("Optimal value:")
+    print(value_optimal)
+    print("Steps to converge:", steps)
 
     # This code can be used to "rollout" a policy in the environment:
     """print ("rollout policy:")

@@ -86,24 +86,50 @@ def plot_Q(Q, env):
     plt.yticks([])
 
 
+def e_greedy(env, Q, s, epsilon):
+    random = np.random.random_sample()
+    if random <= epsilon:
+        return np.argmax(Q[s,:])
+    else:
+        return np.random.randint(env.action_space.n)
+
+
 def sarsa(env, alpha=0.1, gamma=0.9, epsilon=0.1, num_ep=int(1e4)):
     Q = np.zeros((env.observation_space.n,  env.action_space.n))
 
     # TODO: implement the sarsa algorithm
-
-    # This is some starting point performing random walks in the environment:
     for i in range(num_ep):
         s = env.reset()
+        a = e_greedy(env, Q, s, epsilon) #epsilon-greedy
         done = False
         while not done:
-            a = np.random.randint(env.action_space.n)
             s_, r, done, _ = env.step(a)
+            a_ = e_greedy(env, Q, s, epsilon)
+            Q[s,a] = Q[s,a] + alpha * (r + gamma*Q[s_,a_] - Q[s,a])
+            s = s_
+            a = a_
+
+    # This is some starting point performing random walks in the environment:
+    '''for i in range(num_ep):
+                    s = env.reset()
+                    done = False
+                    while not done:
+                        a = np.random.randint(env.action_space.n)
+                        s_, r, done, _ = env.step(a)'''
     return Q
 
 
 def qlearning(env, alpha=0.1, gamma=0.9, epsilon=0.1, num_ep=int(1e4)):
     Q = np.zeros((env.observation_space.n,  env.action_space.n))
     # TODO: implement the qlearning algorithm
+    for i in range(num_ep):
+        s = env.reset()
+        done = False
+        while not done:
+            a = e_greedy(env, Q, s, epsilon)
+            s_, r, done, _ = env.step(a)
+            Q[s,a] = Q[s,a] + alpha * (r + gamma*np.max(Q[s_,:]) - Q[s,a])
+            s = s_
     return Q
 
 
@@ -112,7 +138,7 @@ env=gym.make('FrozenLake-v0')
 #env=gym.make('FrozenLake-v0', map_name="8x8")
 
 print("Running sarsa...")
-Q = sarsa(env)
+Q = sarsa(env, epsilon=0.5)
 plot_V(Q, env)
 plot_Q(Q, env)
 print_policy(Q, env)
